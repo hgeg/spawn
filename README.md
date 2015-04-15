@@ -1,5 +1,5 @@
 # spawn
-a spawn-fcgi wrapper to easily handle web applications
+a spawn-fcgi wrapper for easily handling your web applications.
 
 ## installation
 install spawn-fcgi package first. then add the file named spawn to your path or move it to your bin directory.
