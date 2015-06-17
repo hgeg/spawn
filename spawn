@@ -45,6 +45,14 @@ if __name__ == '__main__':
             if not c: print "OK"
             else: print "ERROR: %s"%c
         except IOError: print 'run spawn init first'
+    elif 'status' in vals:
+        print 'current spawn config:'
+        config = json.loads(open('./.spawn','r').read())
+        print 'script name:',config['name']
+        print 'port:',config['port']
+        if 'command' in config:
+            print 'on start:',config['command']
+
     elif 'purge' in vals:
         print 'removing spawn config'
         try:
