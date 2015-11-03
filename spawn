@@ -41,6 +41,7 @@ if __name__ == '__main__':
             print 'restarting spawn process...'
             config = json.loads(open('./.spawn','r').read())
             call('pgrep -f "%s" | xargs kill'%config['name'],shell=True)
+            time.sleep(1)
             c = call('spawn-fcgi -f %s -p %s'%(config['name'],config['port']),shell=True,stdout=PIPE,stderr=PIPE)
             if not c: print "OK"
             else: print "ERROR: %s"%c
