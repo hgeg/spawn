@@ -3,25 +3,27 @@ from subprocess import call,PIPE
 from collections import defaultdict
 import os,sys,time,json
 
-
 def init(args): 
     try:
-        if '-c' in args:
-            open('./.spawn','w').write('{"name":"./%s","port":"%s","command":"%s"}'%(args['-f'],args['-p'],args['-c']))
-        else:
-            open('./.spawn','w').write('{"name":"./%s","port":"%s"}'%(args['-f'],args['-p']))
+        config = open('./.spawn','w')
+        data = {"name":args['-f'],"port":args['-p'],"onstart":None,"onstop":None}
+        if '--onstart' in args:
+            data.update(onstart=args["--onstart"])
+        if '--onstop' in args:
+            data.update(onstop=args["--onstop"])
+        config.write(json.dumps(data))
+        print 'ok'
     except KeyError:
-        print 'invalid arguments for init\nuse: spawn init -f <filename> -p <port> [-c <command>]'
+        print 'invalid arguments for init\nuse: spawn init -f <filename> -p <port> [--onstart <command>] [--onstop <command>]'
 
 def start(args):
-    try:
-        os.chdir(args['-d'])
+    try: os.chdir(args['-d'])
     except KeyError: pass
     try:
         config = json.loads(open('./.spawn','r').read())
         print 'starting spawn process...'
+        if "onstart" in config: call(config['onstart'],shell=True)
         c = call('spawn-fcgi  -f %s -p %s'%(config['name'],config['port']),shell=True,stdout=PIPE,stderr=PIPE)
-        if  "command" in config: call(config['command'],shell=True)
         if not c: print "ok"
         else: print "error: %s"%c
     except IOError: print 'run spawn init first'
@@ -31,18 +33,24 @@ def stop(args):
     try: os.chdir(args['-d'])
     except KeyError: pass
     try:
-        print 'stopping spawn process...'
         config = json.loads(open('./.spawn','r').read())
-        call('pgrep -f "%s" | xargs kill'%config['name'],shell=True,stdout=PIPE,stderr=PIPE)
-        print "ok"
+        print 'stopping spawn process...'
+        if "onstop" in config: call(config['onstop'],shell=True)
+        c = call('pgrep -f "%s" | xargs kill'%config['name'],shell=True,stdout=PIPE,stderr=PIPE)
+        if not c: print "ok"
+        else: print "error: %s"%c
     except IOError: print 'run "spawn init" first'
 
 def status(args):
-    print 'current spawn config:'
-    config = json.loads(open('./.spawn','r').read())
-    print 'script name: %s\nport: %s'%(config['name'], config['port'])
-    if 'command' in config:
-        print 'on start:',config['command']
+    try:
+        config = json.loads(open('./.spawn','r').read())
+        print 'current spawn config:'
+        print 'spawn executable: %s\nport: %s'%(config['name'], config['port'])
+        if  'onstart' in config:
+            print 'on start command: "%s"'%config['onstart']
+        if  'onstart' in config:
+            print 'on stop command: "%s"'%config['onstop']
+    except IOError: print 'run "spawn init" first'
 
 def restart(args):
     stop(args)
@@ -50,13 +58,13 @@ def restart(args):
     start(args)
 
 def purge(args):
-    print 'removing spawn config'
+    print 'removing spawn config...'
     try:
         os.remove('.spawn')
+        print "ok"
     except OSError: print 'unable to remove config file'
-    print "ok"
 
-def error(args): print 'unknown command\nuse spawn init|start|stop|restart'
+def error(args): print 'unknown command!\nuse spawn init|start|stop|restart'
 
 if __name__ == '__main__':
     commands = defaultdict(error, { 'init': init, 'start': start, 'stop': stop, 'status': status, 'restart': restart, 'purge': purge })
