@@ -64,7 +64,7 @@ def purge(args=None):
         print "ok"
     except OSError: print 'unable to remove config file'
 
-def error(args=None): print 'unknown command!\nuse spawn init|start|stop|restart'
+def error(args=None): print 'unknown command!\nuse spawn init|start|stop|restart|status|purge'
 
 if __name__ == '__main__':
     try:
