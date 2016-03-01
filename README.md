@@ -21,4 +21,4 @@ this will create a config file titled ```.spawn``` in the working directory. You
 
 ```status```: prints the contents of config file in a human readable format.
 
-```purge```: removes the config file.
+```clean```: removes the config file.
