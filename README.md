@@ -14,7 +14,11 @@ this will create a config file titled ```.spawn``` in the working directory. You
 ## commands
 
 ```start```: runs the application.
+
 ```stop```: kills the running process.
+
 ```restart```: just a shortcut for "stop, wait for a bit then start again".
+
 ```status```: prints the contents of config file in a human readable format.
+
 ```purge```: removes the config file.
