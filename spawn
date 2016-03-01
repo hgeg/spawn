@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from subprocess import call,PIPE
-from collections import defaultdict
 import os,sys,time,json
 
 def init(args): 
@@ -68,7 +67,7 @@ def error(args=None): print 'unknown command!\nuse spawn init|start|stop|restart
 
 if __name__ == '__main__':
     try:
-        commands = defaultdict(error, { 'init': init, 'start': start, 'stop': stop, 'status': status, 'restart': restart, 'purge': purge })
+        commands = { 'init': init, 'start': start, 'stop': stop, 'status': status, 'restart': restart, 'purge': purge }
         args = dict(zip(sys.argv[0::2],sys.argv[1::2]))
         cmd = args.values()[0]
         commands[cmd](args)
