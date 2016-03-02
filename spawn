@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from subprocess import call,PIPE,check_output as check, STDOUT, CalledProcessError
+from subprocess import call,PIPE
 import os,sys,time,json
 
 def init(args): 
@@ -65,9 +65,9 @@ def clean(args=None):
 def error(args=None): print 'unknown command!\nuse spawn init|start|stop|restart|status|clean'
 
 if __name__ == '__main__':
-    #try:
+    try:
         commands = { 'init': init, 'start': start, 'stop': stop, 'status': status, 'restart': restart, 'clean': clean }
         args = zip(sys.argv[0::2],sys.argv[1::2])
         cmd = args[0][1]
         commands[cmd](dict(args))
-    #except: error()
+    except: error()
