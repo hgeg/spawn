@@ -1,12 +1,18 @@
 # spawn
-a spawn-fcgi wrapper for easily handling your web applications.
+a fcgi app spawner for easily handling your web applications.
 
 ## installation
-install spawn-fcgi package first. then add the file named spawn to your path or move it to your bin directory.
+just add the spawn executable to your path or move it to your bin directory.
 
 ## how to use
-go to your web application directory enter the command to initialize spawn for your application:
+go to your web application directory and enter the command to initialize spawn for your application:
 
-    spawn init -f <filename.py> -p <port> 
+    spawn init -f <filepath> -p <port> 
 
-if you want to run a custom command each time you start your project also add ```-c "command"``` option. After the initialization phase, start/stop your app using ```spawn start/stop``` or simply restart by using ```spawn restart```. To remove spawn configuration use ```purge``` command.
+this will create a config file named `.spawn` at current directory. now, to start your application just type `spawn start` on this directory, or use `-d <path>` option. here is the list of all the commands with complete options:
+
+* `init -f <filepath> -p <port> [--onstart <path>] [--onstop <path>]`: creates spawn configuration for the process.
+* `start [-d <abspath>]`: starts the process.
+* `stop`: stops the process
+* `status`: shows the spawn configuration for the process
+* `clean`: removes spawn config
