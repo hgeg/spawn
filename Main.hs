@@ -33,10 +33,11 @@ data Config = C { cproc  :: String
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.3.0"
+  putStrLn "spawn v0.3.2"
   args <- getArgs
-  let (cmd:rest) = args
-  runCommand cmd $ consumeOpts rest
+  case args of
+    (cmd:rest) -> runCommand cmd $ consumeOpts rest
+    otherwise  -> cError
 
 -- function declarations ------------------
 -- helpers --
@@ -100,12 +101,6 @@ getPid ph = withProcessHandle ph go
   where go ph_ = case ph_ of
                    OpenHandle   x -> return x
                    ClosedHandle _ -> return (-1)
-
-isRunning pid = do
-  handle <- (ph pid)
-  (ex handle)
-  where ph p  = mkProcessHandle (T.CPid p) False
-        ex ph = P.getProcessExitCode ph
 
 cStart opts = do
   putStr "starting process: "
