@@ -6,6 +6,14 @@ Just add the spawn executable to your path or move it to your bin directory.
 
 ## how to use
 Go to your web application directory and enter the command to initialize spawn for your application:
+=======
+a spawn-fcgi wrapper that lets you smoothly handle your python-wsgi applications.
+
+## installation
+install spawn-fcgi package first. then add the file named spawn to your path or make a symbolic link to your bin directory.
+
+## how to use
+go to directory of your wsgi application and run the following command to initialize spawn:
 
     spawn init -f <filepath> -p <port> 
 
