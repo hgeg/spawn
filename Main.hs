@@ -73,7 +73,7 @@ extract Nothing  = "$invalid"
 extract (Just x) = x
 
 countProcess :: String -> IO (Int) 
-countProcess pname = return (fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ exec ++ "\" | wc -l") "")
+countProcess pname = fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ pname ++ "\" | wc -l") ""
 
 cInit :: Options -> IO ()
 cInit opts = do
@@ -103,6 +103,7 @@ cStart opts = do
   let start = config # "start"
 
   pcount <- countProcess exec
+  putStrLn $ "pcount: " ++ show pcount
   if pcount > 0 then 
     putStrLn "already running!"
   else do
