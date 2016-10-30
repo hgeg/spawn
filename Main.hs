@@ -13,144 +13,161 @@ import Data.List
 import qualified System.Process as P
 import qualified Data.ByteString.Lazy as B
 import qualified System.Posix.Types as T
+import qualified Data.Map as Map
 
 -- type declarations ----------------------
-data Options = O { oproc  :: String 
-                 , oport  :: String 
-                 , owd    :: String 
-                 , ostart :: String 
-                 , ostop  :: String
-                 } deriving (Show)
+type Options = Map.Map String String
+type Config = Map.Map String String
 
 empty :: Options
-empty = O {oproc = "", oport = "", owd = "", ostart = "", ostop = ""}
+empty = Map.fromList []
 
-data Config = C { cproc  :: String
-                , cport  :: String
-                , cstart :: String
-                , cstop  :: String
-                } deriving (Show)
+defcon :: Config
+defcon = Map.fromList []
+
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.3.2"
+  putStrLn "spawn v0.5.1"
   args <- getArgs
   case args of
     (cmd:rest) -> runCommand cmd $ consumeOpts rest
     otherwise  -> cError
 
--- function declarations ------------------
--- helpers --
-runCommand  :: String -> Options -> IO ()
-consumeOpts :: [String] -> Options
-readConfig  :: IO (Config)
-
-toLines   :: Config -> [String]
-fromLines :: [String] -> Config
--- commands --
-cInit   :: Options -> IO ()
-cStart  :: Options -> IO ()
-cStop   :: IO ()
-cReload :: Options -> IO ()
-cStatus :: IO ()
-cClean  :: IO ()
-cError  :: IO ()
--------------------------------------------
-
 -- function definitions -------------------
+runCommand :: String -> Options -> IO ()
 runCommand "init"   opts = cInit opts
 runCommand "start"  opts = cStart opts 
 runCommand "stop"   opts = cStop
 runCommand "reload" opts = cReload opts
 runCommand "status" opts = cStatus
 runCommand "clean"  opts = cClean
-runCommand c        o    = putStrLn $ "err: " ++ c ++ " opts: " ++ (show o)
+runCommand c        o    = cError
 
+consumeOpts' :: Options -> [String] -> Options
 consumeOpts' opt []                 = opt
 consumeOpts' opt [_]                = opt
-consumeOpts' opt ("-f":v:os)        = consumeOpts' O {oproc = v        , oport = oport opt, owd = owd opt, ostart = ostart opt, ostop = ostop opt} os
-consumeOpts' opt ("-p":v:os)        = consumeOpts' O {oproc = oproc opt, oport = v        , owd = owd opt, ostart = ostart opt, ostop = ostop opt} os
-consumeOpts' opt ("-d":v:os)        = consumeOpts' O {oproc = oproc opt, oport = oport opt, owd =      v , ostart = ostart opt, ostop = ostop opt} os
-consumeOpts' opt ("--onstart":v:os) = consumeOpts' O {oproc = oproc opt, oport = oport opt, owd = owd opt, ostart = v         , ostop = ostop opt} os
-consumeOpts' opt ("--onstop":v:os)  = consumeOpts' O {oproc = oproc opt, oport = oport opt, owd = owd opt, ostart = ostart opt, ostop = v        } os
+consumeOpts' opt ("-f":v:os)        = consumeOpts' (Map.insert "proc" v opt) os
+consumeOpts' opt ("-p":v:os)        = consumeOpts' (Map.insert "port" v opt) os
+consumeOpts' opt ("-d":v:os)        = consumeOpts' (Map.insert "dir" v opt) os
+consumeOpts' opt ("--onstart":v:os) = consumeOpts' (Map.insert "start" v opt) os
+consumeOpts' opt ("--onstop":v:os)  = consumeOpts' (Map.insert "stop" v opt) os
 consumeOpts' opt (_:_:os)           = consumeOpts' opt os
 
+consumeOpts :: [String] -> Options
 consumeOpts = consumeOpts' empty
 
+readConfig  :: IO (Config)
 readConfig = do
   contents <- fmap lines $ readFile ".spawn"
-  return C {cproc = contents !! 0, cport = contents !! 1, cstart = contents !! 2, cstop = contents !! 3}
+  let keys = ["proc","port","start","stop"]
+  return (Map.fromList $ zip keys contents)
 
-toLines cfg = [cproc cfg, cport cfg, cstart cfg, cstop cfg]
-fromLines lines = C {cproc= lines !! 0, cport = lines !! 1, cstart = lines !! 2, cstop = lines !! 3}
+(#) :: Map.Map String String -> String -> Maybe String
+k # m = if value=="$invalid" then Nothing
+        else Just value
+  where value = extract $ Map.lookup m k
 
-mint Nothing = -999
-mint (Just n)  = n
+extract :: Maybe String -> String
+extract Nothing  = "$invalid"
+extract (Just x) = x
 
+countProcess :: String -> IO (Int) 
+countProcess pname = return (fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ exec ++ "\" | wc -l") "")
+
+cInit :: Options -> IO ()
 cInit opts = do
   putStr "creating spawn config: "
-  let proc  = oproc opts
-  let port  = readMaybe (oport opts) :: Maybe Int
-  let start = ostart opts
-  let stop  = ostop opts
-  let config = proc ++ "\n" ++ show (mint port) ++ "\n" ++ start ++ "\n" ++ stop
-  writeFile ".spawn" config
-  putStrLn "ok."
+  let proc  = opts # "proc"
+  let port  = opts # "port"
+  if proc == Nothing || port == Nothing then
+    putStrLn "Invalid options: \"-p <port>\" and \"-f <process>\" are both required."
+  else do
+    let start = opts # "start"
+    let stop  = opts # "stop"
+    let config = extract proc ++ "\n" ++ extract port ++ "\n" ++ extract start ++ "\n" ++ extract stop
+    writeFile ".spawn" config
+    putStrLn "ok."
 
 getPid ph = withProcessHandle ph go
   where go ph_ = case ph_ of
                    OpenHandle   x -> return x
                    ClosedHandle _ -> return (-1)
 
+cStart :: Options -> IO ()
 cStart opts = do
-  putStr "starting process: "
+  putStr "spawning process: "
 
   config <- readConfig
-  let exec = "./" ++ (cproc config)
-  pcount <- fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ exec ++ "\" | wc -l") ""
+  let exec = "./" ++ (extract $ config # "proc")
+  let start = config # "start"
 
+  pcount <- countProcess exec
   if pcount > 0 then 
     putStrLn "already running!"
   else do
-    ph     <- P.spawnCommand $ intercalate " " [exec, "-p", (cport config), ">/dev/null", "2>&1"]
+    ph     <- P.spawnCommand $ intercalate " " [exec, "-p", (extract $ config # "port"), ">/dev/null", "2>&1"]
     newpid <- getPid ph
     putStrLn $ show newpid
+    if start /= Nothing then do
+      P.spawnCommand $ extract start
+      return ()
+    else return ()
   
+cStop :: IO ()
 cStop = do
   config <- readConfig
   putStr "terminating process: "
-  let exec = "\"./" ++ (cproc config) ++ "\""
-  P.spawnCommand $ intercalate " " ["pgrep","-f",exec,"|","xargs","kill"]
+  let exec = "\"./" ++ (extract $ config # "proc") ++ "\""
+  P.callCommand $ intercalate " " ["pgrep", "-f", exec, "|", "xargs", "kill"]
+  let stop = config # "stop"
+  if stop /= Nothing then do
+    P.spawnCommand $ extract stop
+    return ()
+  else return ()
   putStrLn "ok."
 
-cReload opts = cStop >> (cStart opts)
+cReload :: Options -> IO ()
+cReload opts = do 
+  cStop
+  (cStart opts)
 
+cStatus :: IO ()
 cStatus = do
   config <- readConfig
-  let onstart = cstart config
-  let onstop  = cstop config
-  let exec = "./" ++ (cproc config)
-  pcount <- fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ exec ++ "\" | wc -l") ""
+  let onstart = config # "start"
+  let onstop  = config # "stop"
+  let exec = "./" ++ (extract $ config # "proc")
+  let port = (extract $ config # "port")
+  pcount <- countProcess exec
 
   putStrLn "configuration:"
   putStrLn $ "status:   " ++ if pcount>0 then "running" else "stopped"
-  putStrLn $ "process:  " ++ cproc config
-  putStrLn $ "port:     " ++ cport config
-  --if onstart=="" then putStrLn $ "on start: " ++ onstart
-  --else return ()
-  --if onstop=="" then putStrLn $ "on stop:  " ++ onstop
-  --else return ()
-
-cClean = do
-  putStr "removing configuration: "
-  spconf <- doesFileExist ".spawn"
-  if spconf then
-    removeFile ".spawn"
+  putStrLn $ "process:  " ++ exec
+  putStrLn $ "port:     " ++ port
+  if onstart/=Nothing then putStrLn $ "onstart:  " ++ extract onstart
   else return ()
-  cStop
-  putStrLn "ok."
+  if onstop/=Nothing then putStrLn $ "onstop:   " ++ extract onstop
+  else return ()
 
+cClean :: IO ()
+cClean = do
+  spconf <- doesFileExist ".spawn"
+  if spconf then do
+    config <- readConfig
+    let exec = "./" ++ (extract $ config # "proc")
+    pcount <- fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ exec ++ "\" | wc -l") ""
+
+    if pcount > 0 then cStop else return ()
+
+    putStr "removing configuration: "
+    removeFile ".spawn"
+    putStrLn "ok."
+  else
+    putStrLn "error: spawn template not found."
+
+cError :: IO ()
 cError = do
-  putStrLn "unknown command: "
+  putStrLn "unknown command!"
   putStrLn "usage: spawn [init|start|stop|reload|status|clean] [options]"
 -------------------------------------------
