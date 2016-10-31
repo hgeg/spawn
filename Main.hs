@@ -73,7 +73,8 @@ extract Nothing  = "$invalid"
 extract (Just x) = x
 
 countProcess :: String -> IO (Int) 
-countProcess pname = fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ pname ++ "\" | wc -l") ""
+countProcess pname = fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ cb pname ++ "\" | wc -l") ""
+  where cb (x:xs) = '[':x:']':xs
 
 cInit :: Options -> IO ()
 cInit opts = do
@@ -103,11 +104,10 @@ cStart opts = do
   let start = config # "start"
 
   pcount <- countProcess exec
-  putStrLn $ "pcount: " ++ show pcount
   if pcount > 0 then 
     putStrLn "already running!"
   else do
-    ph     <- P.spawnCommand $ intercalate " " [exec, "-p", (extract $ config # "port"), ">/dev/null", "2>&1"]
+    ph     <- P.spawnCommand $ intercalate " " ["spawn-fcgi -f", exec, "-p", (extract $ config # "port"), ">/dev/null", "2>&1"]
     newpid <- getPid ph
     putStrLn $ show newpid
     if start /= Nothing then do
@@ -119,7 +119,7 @@ cStop :: IO ()
 cStop = do
   config <- readConfig
   putStr "terminating process: "
-  let exec = "\"./" ++ (extract $ config # "proc") ++ "\""
+  let exec = "\"[.]/" ++ (extract $ config # "proc") ++ "\""
   P.callCommand $ intercalate " " ["pgrep", "-f", exec, "|", "xargs", "kill"]
   let stop = config # "stop"
   if stop /= Nothing then do
