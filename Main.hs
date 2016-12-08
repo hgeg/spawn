@@ -126,8 +126,8 @@ cStop opts = do
   let dir = getDir $ opts # "dir"
   config <- readConfig dir
   putStr "terminating process: "
-  let exec = "\"[.]/" ++ (extract $ config # "proc") ++ "\""
-  P.callCommand $ intercalate " " ["pgrep", "-f", exec, "|", "xargs", "kill"]
+  let exec = "\"" ++ (extract $ config # "proc") ++ "\""
+  P.spawnCommand $ intercalate " " ["pgrep", "-f", exec, "|", "xargs", "kill"]
   let stop = config # "stop"
   if stop /= Nothing then do
     P.spawnCommand $ dir ++ "/" ++ extract stop
