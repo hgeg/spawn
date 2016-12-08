@@ -17,22 +17,13 @@ go to directory of your wsgi application and run the following command to initia
 
     spawn init -f <filepath> -p <port> 
 
-This will create a config file named `.spawn` at current directory. Now, start your application by typing `spawn start` on this directory, or use `-d <path>` option. 
+This will create a config file named `.spawn` at current directory. Then, start your application by typing `spawn start` on this directory, or use `-d <path>` option. Your app must be an executable in order to be spawned.
 
 Here is the list of all the commands with full options:
 
 * `init -f <filepath> -p <port> [--onstart <path>] [--onstop <path>]`: Create spawn configuration for the process.
-* `start [-d <abspath>]`: Start the process.
-* `stop`: Stop the process.
-* `reload`: Restart the process.
-* `status`: Show spawn config.
+* `start [-d <path>]`: Start the process.
+* `stop [-d <path>]`: Stop the process.
+* `reload [-d <path>]`: Restart the process.
+* `status [-d <path>]`: Show spawn config.
 * `clean`: Remove spawn config.
-
-###creating spawnable processes
-
-In order for your app to be run by spawn command, it must expect port number as the first (and only) argument. So, a regular way to start your server may be something like `./myapp 9218`. You can achieve such structure by either refactoring your code, or wrapping main executable with a shell script such as:
-	
-	#!/bin/sh
-	./myapp -f "some custom option" --port $1 --arg "another one"
-	
-Which can be executable in desired form, therefore is suitable for spawning.
