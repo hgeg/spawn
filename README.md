@@ -1,12 +1,4 @@
 # spawn
-A fcgi process spawner for easily handling your web applications.
-
-## installation
-Just add the spawn executable to your path or move it to your bin directory.
-
-## how to use
-Go to your web application directory and enter the command to initialize spawn for your application:
-=======
 a spawn-fcgi wrapper that lets you smoothly handle your python-wsgi applications.
 
 ## installation
