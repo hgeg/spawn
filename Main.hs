@@ -36,12 +36,12 @@ main = do
 
 -- function definitions -------------------
 runCommand :: String -> Options -> IO ()
-runCommand "init"   opts = cInit opts
-runCommand "start"  opts = cStart opts 
-runCommand "stop"   opts = cStop opts
-runCommand "reload" opts = cReload opts
-runCommand "status" opts = cStatus opts
-runCommand "clean"  opts = cClean opts
+runCommand "init"   opts = checkConfig opts cInit
+runCommand "start"  opts = checkConfig opts cStart
+runCommand "stop"   opts = checkConfig opts cStop 
+runCommand "reload" opts = checkConfig opts cReload 
+runCommand "status" opts = checkConfig opts cStatus 
+runCommand "clean"  opts = checkConfig opts cClean 
 runCommand c        o    = cError
 
 consumeOpts' :: Options -> [String] -> Options
@@ -57,7 +57,16 @@ consumeOpts' opt (_:_:os)           = consumeOpts' opt os
 consumeOpts :: [String] -> Options
 consumeOpts = consumeOpts' empty
 
-readConfig  :: String -> IO (Config)
+checkConfig :: Options -> (Options -> IO ()) -> IO ()
+checkConfig opts continue = do
+  let dir = getDir $ opts # "dir"
+  let confPath = (dir ++ "/" ++ ".spawn")
+  confExists <- doesFileExist confPath  
+  if confExists
+    then continue opts
+    else putStrLn $ "not a spawn config" ++ "\nrun spawn init first"
+
+readConfig :: String -> IO (Config)
 readConfig dir = do
   contents <- fmap lines $ readFile (dir ++ "/" ++ ".spawn")
   let keys = ["proc","port","start","stop"]
@@ -76,7 +85,6 @@ getDir :: Maybe String -> String
 getDir Nothing  = "."
 getDir (Just x) = x
 
-
 countProcess :: String -> IO (Int) 
 countProcess pname = fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ cb pname ++ "\" | wc -l") ""
   where cb (x:xs) = '[':x:']':xs
@@ -86,14 +94,14 @@ cInit opts = do
   putStr "creating spawn config: "
   let proc  = opts # "proc"
   let port  = opts # "port"
-  if proc == Nothing || port == Nothing then
-    putStrLn "Invalid options: \"-p <port>\" and \"-f <process>\" are both required."
-  else do
-    let start = opts # "start"
-    let stop  = opts # "stop"
-    let config = extract proc ++ "\n" ++ extract port ++ "\n" ++ extract start ++ "\n" ++ extract stop
-    writeFile ".spawn" config
-    putStrLn "ok."
+  if proc == Nothing || port == Nothing 
+    then putStrLn "Invalid options: \"-p <port>\" and \"-f <process>\" are both required."
+    else do
+      let start = opts # "start"
+      let stop  = opts # "stop"
+      let config = extract proc ++ "\n" ++ extract port ++ "\n" ++ extract start ++ "\n" ++ extract stop
+      writeFile ".spawn" config
+      putStrLn "ok."
 
 getPid ph = withProcessHandle ph go
   where go ph_ = case ph_ of
@@ -110,16 +118,17 @@ cStart opts = do
   let start = config # "start"
 
   pcount <- countProcess exec
-  if pcount > 0 then 
-    putStrLn "already running!"
-  else do
-    ph     <- P.spawnCommand $ intercalate " " ["spawn-fcgi -f", exec, "-p", (extract $ config # "port"), ">/dev/null", "2>&1"]
-    newpid <- getPid ph
-    putStrLn $ show newpid
-    if start /= Nothing then do
-      P.spawnCommand $ dir ++ "/" ++ extract start
-      return ()
-    else return ()
+  if pcount > 0 
+    then putStrLn "already running!"
+    else do
+      ph     <- P.spawnCommand $ intercalate " " ["spawn-fcgi -f", exec, "-p", (extract $ config # "port"), ">/dev/null", "2>&1"]
+      newpid <- getPid ph
+      putStrLn $ show newpid
+      if start /= Nothing 
+        then do
+          P.spawnCommand $ dir ++ "/" ++ extract start
+          return ()
+        else return ()
   
 cStop :: Options -> IO ()
 cStop opts = do
@@ -129,10 +138,11 @@ cStop opts = do
   let exec = "\"" ++ (extract $ config # "proc") ++ "\""
   P.spawnCommand $ intercalate " " ["pgrep", "-f", exec, "|", "xargs", "kill"]
   let stop = config # "stop"
-  if stop /= Nothing then do
-    P.spawnCommand $ dir ++ "/" ++ extract stop
-    return ()
-  else return ()
+  if stop /= Nothing 
+    then do
+      P.spawnCommand $ dir ++ "/" ++ extract stop
+      return ()
+    else return ()
   putStrLn "ok."
 
 cReload :: Options -> IO ()
@@ -154,27 +164,29 @@ cStatus opts = do
   putStrLn $ "status:   " ++ if pcount>0 then "running" else "stopped"
   putStrLn $ "process:  " ++ exec
   putStrLn $ "port:     " ++ port
-  if onstart/=Nothing then putStrLn $ "onstart:  " ++ extract onstart
-  else return ()
-  if onstop/=Nothing then putStrLn $ "onstop:   " ++ extract onstop
-  else return ()
+  if onstart/=Nothing 
+    then putStrLn $ "onstart:  " ++ extract onstart
+    else return ()
+  if onstop/=Nothing 
+    then putStrLn $ "onstop:   " ++ extract onstop
+    else return ()
 
 cClean :: Options -> IO ()
 cClean opts = do
   spconf <- doesFileExist ".spawn"
-  if spconf then do
-    let dir = getDir $ opts # "dir"
-    config <- readConfig dir
-    let exec = "./" ++ (extract $ config # "proc")
-    pcount <- fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ exec ++ "\" | wc -l") ""
+  if spconf 
+    then do
+      let dir = getDir $ opts # "dir"
+      config <- readConfig dir
+      let exec = "./" ++ (extract $ config # "proc")
+      pcount <- fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ exec ++ "\" | wc -l") ""
 
-    if pcount > 0 then (cStop opts) else return ()
+      if pcount > 0 then (cStop opts) else return ()
 
-    putStr "removing configuration: "
-    removeFile ".spawn"
-    putStrLn "ok."
-  else
-    putStrLn "error: spawn template not found."
+      putStr "removing configuration: "
+      removeFile ".spawn"
+      putStrLn "ok."
+    else putStrLn "error: spawn template not found."
 
 cError :: IO ()
 cError = do
