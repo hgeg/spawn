@@ -28,7 +28,7 @@ defcon = Map.fromList []
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.5.1"
+  putStrLn "spawn v0.7.1"
   args <- getArgs
   case args of
     (cmd:rest) -> runCommand cmd $ consumeOpts rest
@@ -148,6 +148,7 @@ cStop opts = do
 cReload :: Options -> IO ()
 cReload opts = do 
   (cStop opts)
+  P.callCommand $ "sleep 1"
   (cStart opts)
 
 cStatus :: Options -> IO ()
