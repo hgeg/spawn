@@ -29,7 +29,7 @@ defconf = Map.fromList []
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.8.7"
+  putStrLn "spawn v0.8.10"
   args <- getArgs
   case args of
     (cmd:rest) -> runCommand cmd $ consumeOpts rest
@@ -145,7 +145,7 @@ cStart opts = do
           putStrLn p
       if start /= Nothing 
         then do
-          P.spawnCommand $ dir ++ "/" ++ extract start
+          P.spawnCommand $ extract start
           return ()
         else return ()
   
@@ -160,7 +160,7 @@ cStop opts = do
   if stop /= Nothing 
     then do
       let pidPath = dir ++ "/.pid"
-      P.spawnCommand $ dir ++ "/" ++ extract stop
+      P.spawnCommand $ extract stop
       pidExists <- doesFileExist pidPath 
       if pidExists
         then removeFile pidPath
