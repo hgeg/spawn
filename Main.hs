@@ -29,7 +29,7 @@ defconf = Map.fromList []
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.7.1"
+  putStrLn "spawn v0.8.4"
   args <- getArgs
   case args of
     (cmd:rest) -> runCommand cmd $ consumeOpts rest
@@ -181,7 +181,7 @@ cStatus opts = do
   mPid <- processState dir
 
   putStrLn "configuration:"
-  putStrLn $ "status:   " ++ case mPid of Just p -> "running"  
+  putStrLn $ "status:   " ++ case mPid of Just p -> "running (" ++ p ++ ")"  
                                           Nothing -> "stopped"
   putStrLn $ "process:  " ++ exec
   putStrLn $ "port:     " ++ port
@@ -197,13 +197,7 @@ cClean opts = do
   spconf <- doesFileExist ".spawn"
   if spconf 
     then do
-      let dir = getDir $ opts # "dir"
-      config <- readConfig dir
-      let exec = "./" ++ (extract $ config # "proc")
-      pcount <- fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ exec ++ "\" | wc -l") ""
-
-      if pcount > 0 then (cStop opts) else return ()
-
+      cStop opts
       putStr "removing configuration: "
       removeFile ".spawn"
       putStrLn "ok."

@@ -2,7 +2,7 @@
 --  see http://haskell.org/cabal/users-guide/
 
 name:                spawn
-version:             0.7.1
+version:             0.8.4
 synopsis:            a manager for wsgi applications
 -- description:         
 homepage:            csgn.us/spawn
