@@ -29,7 +29,7 @@ defconf = Map.fromList []
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.8.4"
+  putStrLn "spawn v0.8.7"
   args <- getArgs
   case args of
     (cmd:rest) -> runCommand cmd $ consumeOpts rest
@@ -82,13 +82,16 @@ extract :: Maybe String -> String
 extract Nothing  = "$invalid"
 extract (Just x) = x
 
+-- |fallback to current directory if no -d flag passed
 getDir :: Maybe String -> String
 getDir Nothing  = "."
 getDir (Just x) = x
 
+-- |read process id from spawn-fcgi output
 getPid :: String -> Maybe String
 getPid output = fmap (!! 0) $ matchRegex (mkRegex "spawn-fcgi: child spawned successfully: PID: ([0-9]+)") output
 
+-- |retrieve process id of application
 processState :: String -> IO (Maybe String)
 processState dir = do
   let pidPath = dir ++ "/.pid"
@@ -104,13 +107,14 @@ processState dir = do
             return Nothing
     else return Nothing
 
+-- |initialize a spawn template 
 cInit :: Options -> IO ()
 cInit opts = do
   putStr "creating spawn config: "
   let proc  = opts # "proc"
   let port  = opts # "port"
   if proc == Nothing || port == Nothing 
-    then putStrLn "Invalid options: \"-p <port>\" and \"-f <process>\" are both required."
+    then putStrLn $ "invalid options\n" ++ "usage: spawn init -p <port> -f <process> [--onstart <command>] [--onstop <command>]"
     else do
       let start = opts # "start"
       let stop  = opts # "stop"
@@ -207,4 +211,3 @@ cError :: IO ()
 cError = do
   putStrLn "unknown command!"
   putStrLn "usage: spawn [init|start|stop|reload|status|clean] [options]"
--------------------------------------------
