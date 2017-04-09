@@ -37,7 +37,7 @@ main = do
 
 -- function definitions -------------------
 runCommand :: String -> Options -> IO ()
-runCommand "init"   opts = checkConfig opts cInit
+runCommand "init"   opts = cInit opts
 runCommand "start"  opts = checkConfig opts cStart
 runCommand "stop"   opts = checkConfig opts cStop 
 runCommand "reload" opts = checkConfig opts cReload 

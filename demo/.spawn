@@ -1,4 +1,4 @@
 demo.py
 9090
-./teststart.sh
-./teststop.sh
+teststart.sh
+teststop.sh
