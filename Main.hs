@@ -8,6 +8,7 @@ import System.Directory
 import Control.Monad
 import Control.Exception
 import Text.Read
+import Text.Regex
 import Data.List
 
 import qualified System.Process as P
@@ -22,8 +23,8 @@ type Config = Map.Map String String
 empty :: Options
 empty = Map.fromList []
 
-defcon :: Config
-defcon = Map.fromList []
+defconf :: Config
+defconf = Map.fromList []
 
 -------------------------------------------
 
@@ -85,9 +86,23 @@ getDir :: Maybe String -> String
 getDir Nothing  = "."
 getDir (Just x) = x
 
-countProcess :: String -> IO (Int) 
-countProcess pname = fmap read $ P.readCreateProcess (P.shell $ "pgrep -f \"" ++ cb pname ++ "\" | wc -l") ""
-  where cb (x:xs) = '[':x:']':xs
+getPid :: String -> Maybe String
+getPid output = fmap (!! 0) $ matchRegex (mkRegex "spawn-fcgi: child spawned successfully: PID: ([0-9]+)") output
+
+processState :: String -> IO (Maybe String)
+processState dir = do
+  let pidPath = dir ++ "/.pid"
+  pidfExists <- doesFileExist pidPath
+  if pidfExists
+    then do
+      oPid <- readFile pidPath 
+      procExists <- doesDirectoryExist ("/proc/" ++ oPid)
+      if procExists 
+        then return (Just oPid)
+        else do
+            removeFile pidPath
+            return Nothing
+    else return Nothing
 
 cInit :: Options -> IO ()
 cInit opts = do
@@ -103,11 +118,6 @@ cInit opts = do
       writeFile ".spawn" config
       putStrLn "ok."
 
-getPid ph = withProcessHandle ph go
-  where go ph_ = case ph_ of
-                   OpenHandle   x -> return x
-                   ClosedHandle _ -> return (-1)
-
 cStart :: Options -> IO ()
 cStart opts = do
   putStr "spawning process: "
@@ -117,13 +127,18 @@ cStart opts = do
   let exec = dir ++ "/" ++ (extract $ config # "proc")
   let start = config # "start"
 
-  pcount <- countProcess exec
-  if pcount > 0 
-    then putStrLn "already running!"
-    else do
-      ph     <- P.spawnCommand $ intercalate " " ["spawn-fcgi -f", exec, "-p", (extract $ config # "port"), ">/dev/null", "2>&1"]
-      newpid <- getPid ph
-      putStrLn $ show newpid
+  mPid <- processState dir 
+  case mPid of
+    Just _ -> putStrLn "already running!"
+    Nothing -> do
+      ph <- P.readCreateProcess (P.shell $ intercalate " " ["spawn-fcgi -f", exec, "-p", (extract $ config # "port")]) ""
+      let mPid = getPid ph
+      case mPid of
+        Nothing -> putStrLn "error" 
+        Just p -> do 
+          let pidPath = dir ++ "/.pid"
+          writeFile pidPath p
+          putStrLn p
       if start /= Nothing 
         then do
           P.spawnCommand $ dir ++ "/" ++ extract start
@@ -140,8 +155,12 @@ cStop opts = do
   let stop = config # "stop"
   if stop /= Nothing 
     then do
+      let pidPath = dir ++ "/.pid"
       P.spawnCommand $ dir ++ "/" ++ extract stop
-      return ()
+      pidExists <- doesFileExist pidPath 
+      if pidExists
+        then removeFile pidPath
+        else return ()
     else return ()
   putStrLn "ok."
 
@@ -159,10 +178,11 @@ cStatus opts = do
   let onstop  = config # "stop"
   let exec = (extract $ config # "proc")
   let port = (extract $ config # "port")
-  pcount <- countProcess exec
+  mPid <- processState dir
 
   putStrLn "configuration:"
-  putStrLn $ "status:   " ++ if pcount>0 then "running" else "stopped"
+  putStrLn $ "status:   " ++ case mPid of Just p -> "running"  
+                                          Nothing -> "stopped"
   putStrLn $ "process:  " ++ exec
   putStrLn $ "port:     " ++ port
   if onstart/=Nothing 
