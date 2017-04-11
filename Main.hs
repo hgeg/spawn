@@ -29,9 +29,10 @@ defconf = Map.fromList []
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.8.10"
+  putStrLn "spawn v0.9.1"
   args <- getArgs
   case args of
+    ["--help"] -> showHelp
     (cmd:rest) -> runCommand cmd $ consumeOpts rest
     otherwise  -> cError
 
@@ -178,10 +179,12 @@ cStatus :: Options -> IO ()
 cStatus opts = do
   let dir = getDir $ opts # "dir"
   config <- readConfig dir
+
   let onstart = config # "start"
   let onstop  = config # "stop"
   let exec = (extract $ config # "proc")
   let port = (extract $ config # "port")
+
   mPid <- processState dir
 
   putStrLn "configuration:"
@@ -211,3 +214,24 @@ cError :: IO ()
 cError = do
   putStrLn "unknown command!"
   putStrLn "usage: spawn [init|start|stop|reload|status|clean] [options]"
+
+showHelp :: IO ()
+showHelp = do
+  putStrLn "usage: spawn [init|start|stop|reload|status|clean] [options]"
+  putStrLn $ "init: initialize new spawn template\n" ++
+    "  -f: (required) fcgi application file\n" ++
+    "  -p: (required) port number\n" ++
+    "  --onstart: command to run after application start\n" ++
+    "  --onstop: command to run after application termination"
+  putStrLn $ "start: start the spawn process\n" ++
+    "  -d: path to spawn directory"
+  putStrLn $ "stop: terminate the spawn process\n" ++
+    "  -d: path to spawn directory"
+  putStrLn $ "reload: restart the spawn process\n" ++
+    "  -d: path to spawn directory"
+  putStrLn $ "status: print process status and configuration"
+  putStrLn $ "clean: stop the process and remove configuration file"
+
+
+
+
