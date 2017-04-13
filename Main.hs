@@ -231,7 +231,3 @@ showHelp = do
     "  -d: path to spawn directory"
   putStrLn $ "status: print process status and configuration"
   putStrLn $ "clean: stop the process and remove configuration file"
-
-
-
-
