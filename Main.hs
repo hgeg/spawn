@@ -157,8 +157,13 @@ cStop opts = do
   let dir = getDir $ opts # "dir"
   config <- readConfig dir
   putStr "terminating process: "
-  let exec = "\"" ++ (extract $ config # "proc") ++ "\""
-  P.spawnCommand $ intercalate " " ["pgrep", "-f", exec, "|", "xargs", "kill"]
+  case processState dir of
+    Just pid -> do 
+      handle <- mkProcessHandle (CPid $ read pid) False
+      waitForProcess handle
+      putStrLn "ok."
+    Nothing -> putStrLn "cannot attach to process for termination."
+
   let stop = config # "stop"
   if stop /= Nothing 
     then do
@@ -169,7 +174,6 @@ cStop opts = do
         then removeFile pidPath
         else return ()
     else return ()
-  putStrLn "ok."
 
 cReload :: Options -> IO ()
 cReload opts = do 
