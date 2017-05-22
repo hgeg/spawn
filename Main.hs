@@ -157,10 +157,11 @@ cStop opts = do
   let dir = getDir $ opts # "dir"
   config <- readConfig dir
   putStr "terminating process: "
-  case processState dir of
+  mPid <- processState dir
+  case mPid of
     Just pid -> do 
-      handle <- mkProcessHandle (CPid $ read pid) False
-      waitForProcess handle
+      handle <- mkProcessHandle (T.CPid $ read pid) False
+      P.terminateProcess handle
       putStrLn "ok."
     Nothing -> putStrLn "cannot attach to process for termination."
 
