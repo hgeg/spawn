@@ -29,7 +29,7 @@ defconf = Map.fromList []
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.9.4"
+  putStrLn "spawn v0.9.8"
   args <- getArgs
   case args of
     ["--help"] -> showHelp
