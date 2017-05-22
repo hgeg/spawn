@@ -29,7 +29,7 @@ defconf = Map.fromList []
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.9.1"
+  putStrLn "spawn v0.9.4"
   args <- getArgs
   case args of
     ["--help"] -> showHelp
@@ -129,14 +129,16 @@ cStart opts = do
 
   let dir = getDir $ opts # "dir"
   config <- readConfig dir
-  let exec = dir ++ "/" ++ (extract $ config # "proc")
+  let exec = "./" ++ (extract $ config # "proc")
   let start = config # "start"
-
   mPid <- processState dir 
+
   case mPid of
     Just _ -> putStrLn "already running!"
     Nothing -> do
-      ph <- P.readCreateProcess (P.shell $ intercalate " " ["spawn-fcgi -f", exec, "-p", (extract $ config # "port")]) ""
+      ph <- if dir /= "." 
+              then P.readCreateProcess (P.shell $ intercalate " " ["spawn-fcgi -d" , dir, " -f", exec, "-p", (extract $ config # "port")]) ""
+              else P.readCreateProcess (P.shell $ intercalate " " ["spawn-fcgi -f", exec, "-p", (extract $ config # "port")]) ""
       let mPid = getPid ph
       case mPid of
         Nothing -> putStrLn "error" 
@@ -155,8 +157,13 @@ cStop opts = do
   let dir = getDir $ opts # "dir"
   config <- readConfig dir
   putStr "terminating process: "
-  let exec = "\"" ++ (extract $ config # "proc") ++ "\""
-  P.spawnCommand $ intercalate " " ["pgrep", "-f", exec, "|", "xargs", "kill"]
+  case processState dir of
+    Just pid -> do 
+      handle <- mkProcessHandle (CPid $ read pid) False
+      waitForProcess handle
+      putStrLn "ok."
+    Nothing -> putStrLn "cannot attach to process for termination."
+
   let stop = config # "stop"
   if stop /= Nothing 
     then do
@@ -167,7 +174,6 @@ cStop opts = do
         then removeFile pidPath
         else return ()
     else return ()
-  putStrLn "ok."
 
 cReload :: Options -> IO ()
 cReload opts = do 
