@@ -29,7 +29,7 @@ defconf = Map.fromList []
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.9.8"
+  putStrLn "spawn v0.9.9"
   args <- getArgs
   case args of
     ["--help"] -> showHelp
@@ -146,11 +146,11 @@ cStart opts = do
           let pidPath = dir ++ "/.pid"
           writeFile pidPath p
           putStrLn p
-      if start /= Nothing 
-        then do
-          P.spawnCommand $ extract start
-          return ()
-        else return ()
+          if start /= Nothing 
+            then do
+              P.spawnCommand $ extract start
+              return ()
+            else return ()
   
 cStop :: Options -> IO ()
 cStop opts = do
@@ -162,24 +162,24 @@ cStop opts = do
     Just pid -> do 
       handle <- mkProcessHandle (T.CPid $ read pid) False
       P.terminateProcess handle
+      let stop = config # "stop"
       putStrLn "ok."
-    Nothing -> putStrLn "cannot attach to process for termination."
-
-  let stop = config # "stop"
-  if stop /= Nothing 
-    then do
-      let pidPath = dir ++ "/.pid"
-      P.spawnCommand $ extract stop
-      pidExists <- doesFileExist pidPath 
-      if pidExists
-        then removeFile pidPath
+      if stop /= Nothing 
+        then do
+          P.spawnCommand $ extract stop
         else return ()
+    Nothing -> putStrLn "cannot attach to process."
+
+  let pidPath = dir ++ "/.pid"
+  pidExists <- doesFileExist pidPath 
+  if pidExists
+    then removeFile pidPath
     else return ()
 
 cReload :: Options -> IO ()
 cReload opts = do 
   (cStop opts)
-  P.callCommand $ "sleep 1"
+  P.callCommand $ "sleep 2"
   (cStart opts)
 
 cStatus :: Options -> IO ()
@@ -228,13 +228,13 @@ showHelp = do
   putStrLn $ "init: initialize new spawn template\n" ++
     "  -f: (required) fcgi application file\n" ++
     "  -p: (required) port number\n" ++
-    "  --onstart: command to run after application start\n" ++
-    "  --onstop: command to run after application termination"
+    "  --onstart: (optional) command to run after application has started\n" ++
+    "  --onstop: (optional) command to run after application has terminated"
   putStrLn $ "start: start the spawn process\n" ++
-    "  -d: path to spawn directory"
+    "  -d: (optional) path to spawn directory"
   putStrLn $ "stop: terminate the spawn process\n" ++
-    "  -d: path to spawn directory"
+    "  -d: (optional) path to spawn directory"
   putStrLn $ "reload: restart the spawn process\n" ++
-    "  -d: path to spawn directory"
+    "  -d: (optional) path to spawn directory"
   putStrLn $ "status: print process status and configuration"
   putStrLn $ "clean: stop the process and remove configuration file"
