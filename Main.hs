@@ -29,7 +29,7 @@ defconf = Map.fromList []
 -------------------------------------------
 
 main = do
-  putStrLn "spawn v0.9.9"
+  putStrLn "spawn v0.9.10"
   args <- getArgs
   case args of
     ["--help"] -> showHelp
@@ -162,6 +162,7 @@ cStop opts = do
     Just pid -> do 
       handle <- mkProcessHandle (T.CPid $ read pid) False
       P.terminateProcess handle
+      P.callCommand $ "sleep 0.5"
       let stop = config # "stop"
       putStrLn "ok."
       if stop /= Nothing 
